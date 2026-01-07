@@ -81,6 +81,7 @@ export default function Page() {
   const reveal = useRef(new Animated.Value(0)).current;
   const shakeX = useRef(new Animated.Value(0)).current;
   const progress = useRef(new Animated.Value(0)).current;
+  const indicatorPop = useRef(new Animated.Value(0)).current;
 
   const heightValue = useMemo(() => parseNumber(heightCm), [heightCm]);
   const weightValue = useMemo(() => parseNumber(weightKg), [weightKg]);
@@ -130,11 +131,38 @@ export default function Page() {
             outputRange: [0, Math.max(0, barWidth - 16)],
           }),
         },
+        {
+          translateY: indicatorPop.interpolate({
+            inputRange: [0, 1],
+            outputRange: [-8, -14],
+          }),
+        },
+        {
+          scale: indicatorPop.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 1.35],
+          }),
+        },
       ],
       backgroundColor: accentHex,
+      opacity: bmi == null ? 0 : 1,
     }),
-    [progress, barWidth, accentHex],
+    [progress, barWidth, accentHex, indicatorPop, bmi],
   );
+
+  function triggerIndicatorPop() {
+    indicatorPop.stopAnimation();
+    indicatorPop.setValue(0);
+    Animated.sequence([
+      Animated.spring(indicatorPop, {
+        toValue: 1,
+        speed: 18,
+        bounciness: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(indicatorPop, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start();
+  }
 
   function triggerInvalidShake() {
     shakeX.setValue(0);
@@ -162,6 +190,7 @@ export default function Page() {
     if (!valid) {
       triggerInvalidShake();
       setBmi(null);
+      indicatorPop.setValue(0);
       Animated.parallel([
         Animated.timing(reveal, { toValue: 0, duration: 160, useNativeDriver: true }),
         Animated.timing(progress, { toValue: 0, duration: 180, useNativeDriver: false }),
@@ -181,12 +210,15 @@ export default function Page() {
       duration: 480,
       useNativeDriver: false,
     }).start();
+
+    triggerIndicatorPop();
   }
 
   function onReset() {
     setHeightCm('');
     setWeightKg('');
     setBmi(null);
+    indicatorPop.setValue(0);
     Animated.parallel([
       Animated.timing(reveal, { toValue: 0, duration: 160, useNativeDriver: true }),
       Animated.timing(progress, { toValue: 0, duration: 180, useNativeDriver: false }),
@@ -194,7 +226,7 @@ export default function Page() {
   }
 
   return (
-    <View className="flex-1 bg-stone-50">
+    <View className="flex-1 bg-stone-100">
       <StatusBar style="dark" />
 
       <KeyboardAvoidingView
@@ -309,7 +341,7 @@ export default function Page() {
               >
                 <Animated.View className="h-3 rounded-full" style={barFillStyle} />
                 <Animated.View
-                  className="absolute top-1/2 h-4 w-4 -translate-y-2 rounded-full"
+                  className="absolute top-1/2 h-4 w-4 rounded-full"
                   style={indicatorStyle}
                 />
               </View>
